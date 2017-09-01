@@ -1,4 +1,8 @@
 <?php
+set_time_limit(120);
+
+use PHT\Config\Search;
+
 require_once 'config.php';
 require_once 'PHT/autoload.php';
 
@@ -86,31 +90,50 @@ try {
         die("Impossible database connection: " . mysqli_error($con));
     }
 
-    $match = $HT->getYouthMatch(102005389);
-    echo $match->getXmlText();
-    $homeTeam = $match->getHomeTeam();
-    echo $homeTeam->getXmlText();
-    $team = $homeTeam->getId();
-    $lineup = $homeTeam->getLineup();
-    echo $lineup->getXmlText();
+    $leagues = array("Primera", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII.");
 
-    foreach ($lineup->getStartingPlayers() as $plyr) {
-        $player = $plyr->getPlayer();
+    $searchParam = new Search();
+    $searchParam->countryLeagueId = 36; //Spain
 
-        $id = $player->getId();
-        $first_name = $player->getFirstName();
-        $last_name = $player->getLastName();
-        $specialty = $player->getSpecialty();
-
-        $result = mysqli_query($con, "INSERT INTO player(id,first_name,last_name,specialty,team) VALUES ($id,'$first_name','$last_name',$specialty,$team);");
-        if (!$result) {
-            echo mysqli_error($con);
+    for ($l = 0; $l < count($leagues); $l++) {
+        $searchParam->seniorLeagueName = $leagues[$l];
+        $searchParam->page = 0;
+        $res = $HT->search($searchParam);
+        processSearchResponse($res);
+        $totalPage = (int)$res->getTotalPage();
+        for ($p = 1; $p < $totalPage; $p++) {
+            $searchParam->page = $p;
+            $res = $HT->search($searchParam);
+            processSearchResponse($res);
         }
     }
+
+//    $match = $HT->getYouthMatch(102005389);
+//    echo $match->getXmlText();
+//    $homeTeam = $match->getHomeTeam();
+//    echo $homeTeam->getXmlText();
+//    $team = $homeTeam->getId();
+//    $lineup = $homeTeam->getLineup();
+//    echo $lineup->getXmlText();
+//
+//    foreach ($lineup->getStartingPlayers() as $plyr) {
+//        $player = $plyr->getPlayer();
+//
+//        $id = $player->getId();
+//        $first_name = $player->getFirstName();
+//        $last_name = $player->getLastName();
+//        $specialty = $player->getSpecialty();
+//
+//        $result = mysqli_query($con, "INSERT INTO player(id,first_name,last_name,specialty,team) VALUES ($id,'$first_name','$last_name',$specialty,$team);");
+//        if (!$result) {
+//            echo mysqli_error($con);
+//        }
+//    }
 
     mysqli_close($con);
 
 } catch (\PHT\Exception\ChppException $e) {
+    echo $e->getMessage();
     $HT = new \PHT\Connection($config);
     $auth = $HT->getPermanentAuthorization(CHPP_RETURN_URL); // put your own url :)
     if ($auth === false) {
@@ -123,6 +146,12 @@ try {
     header('Location: ' . $auth->url);
     exit();
 } catch (\PHT\Exception\NetworkException $e) {
-    echo $e->getError();
+    echo $e->getMessage();
+}
+
+function processSearchResponse(PHT\Xml\Search\Response $res){
+    foreach ($res->getResults() as $result) {
+        echo $result->getValue().' '.$result->getId().'<br>';
+    }
 }
 ?>

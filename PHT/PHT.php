@@ -154,14 +154,14 @@ class PHT extends Config\Base
      */
     protected function getSpecificSeniorTeam($type, $userId = null)
     {
-		$params = array('file' => 'teamdetails', 'version' => Config\Version::TEAMDETAILS);
-		if ($userId !== null) {
-			$params['userID'] = $userId;
-		}
-		$url = Network\Request::buildUrl($params);
-		$xml = Network\Request::fetchUrl($url);
+        $params = array('file' => 'teamdetails', 'version' => Config\Version::TEAMDETAILS);
+        if ($userId !== null) {
+            $params['userID'] = $userId;
+        }
+        $url = Network\Request::buildUrl($params);
+        $xml = Network\Request::fetchUrl($url);
         $doc = new \DOMDocument('1.0', 'UTF-8');
-		$doc->loadXml($xml);
+        $doc->loadXml($xml);
         $teams = $doc->getElementsByTagName('Team');
         for ($t = 0; $t < $teams->length; $t++) {
             $txml = new \DOMDocument('1.0', 'UTF-8');
@@ -531,6 +531,9 @@ class PHT extends Config\Base
             }
         } else {
             throw new Exception\InvalidArgumentException('Parameter $search should have at least one property defined to perform a search');
+        }
+        if (isset($search->page)) {
+            $params['pageIndex'] = $search->page;
         }
 
         return Wrapper\Search::search($params);
