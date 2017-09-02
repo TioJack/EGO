@@ -1,5 +1,5 @@
 <?php
-set_time_limit(120);
+set_time_limit(30);
 
 use PHT\Config\Search;
 
@@ -90,7 +90,8 @@ try {
         die("Impossible database connection: " . mysqli_error($con));
     }
 
-    $leagues = array("Primera", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII.");
+    //$leagues = array("Primera", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII.");
+    $leagues = array("Primera", "II.", "III.", "IV.");
 
     $searchParam = new Search();
     $searchParam->countryLeagueId = 36; //Spain
@@ -99,38 +100,21 @@ try {
         $searchParam->seniorLeagueName = $leagues[$l];
         $searchParam->page = 0;
         $res = $HT->search($searchParam);
-        processSearchResponse($res);
+        processSearchResponse($HT, $res);
         $totalPage = (int)$res->getTotalPage();
         for ($p = 1; $p < $totalPage; $p++) {
             $searchParam->page = $p;
             $res = $HT->search($searchParam);
-            processSearchResponse($res);
+            processSearchResponse($HT, $res);
         }
     }
 
-//    $match = $HT->getYouthMatch(102005389);
-//    echo $match->getXmlText();
-//    $homeTeam = $match->getHomeTeam();
-//    echo $homeTeam->getXmlText();
-//    $team = $homeTeam->getId();
-//    $lineup = $homeTeam->getLineup();
-//    echo $lineup->getXmlText();
-//
-//    foreach ($lineup->getStartingPlayers() as $plyr) {
-//        $player = $plyr->getPlayer();
-//
-//        $id = $player->getId();
-//        $first_name = $player->getFirstName();
-//        $last_name = $player->getLastName();
-//        $specialty = $player->getSpecialty();
-//
-//        $result = mysqli_query($con, "INSERT INTO player(id,first_name,last_name,specialty,team) VALUES ($id,'$first_name','$last_name',$specialty,$team);");
-//        if (!$result) {
-//            echo mysqli_error($con);
-//        }
-//    }
+    //$result = mysqli_query($con, "INSERT INTO player(id,first_name,last_name,specialty,team) VALUES ($id,'$first_name','$last_name',$specialty,$team);");
+    //if (!$result) {
+    //    echo mysqli_error($con);
+    //}
 
-    mysqli_close($con);
+    //mysqli_close($con);
 
 } catch (\PHT\Exception\ChppException $e) {
     echo $e->getMessage();
@@ -149,9 +133,43 @@ try {
     echo $e->getMessage();
 }
 
-function processSearchResponse(PHT\Xml\Search\Response $res){
+function processSearchResponse(\PHT\PHT $HT, PHT\Xml\Search\Response $res)
+{
     foreach ($res->getResults() as $result) {
-        echo $result->getValue().' '.$result->getId().'<br>';
+        echo $result->getValue() . ' ' . $result->getId() . '<br>';
+        $league = $HT->getSeniorLeague($result->getId());
+        foreach ($league->getTeams() as $team) {
+            $seniorTeam = $team->getTeam();
+            if (!$seniorTeam->isBot()) {
+                echo $seniorTeam->getName();
+                $youthTeam = $seniorTeam->getYouthTeam();
+                if (!$youthTeam == null) {
+                    echo " - " . $youthTeam->getName() . "<br>";
+                    $matches = $HT->getYouthMatchesArchive($youthTeam->getId(), date("Y-m-d", strtotime("yesterday")), date("Y-m-d"))->getMatches();
+                    foreach ($matches as $match) {
+                        echo $match->getDate() . ' ' . $match->getId() . '<br>';
+                        processYouthMatch($HT, $match->getId(), $youthTeam->getId());
+                    }
+                } else {
+                    echo '<br>';
+                }
+            }
+        }
     }
 }
-?>
+
+function processYouthMatch(\PHT\PHT $HT, int $youthMatchId, int $youthTeamId)
+{
+    $lineup = $HT->getYouthMatchLineup($youthMatchId, $youthTeamId);
+    foreach ($lineup->getFinalPlayers() as $yield) {
+        echo $yield->getRatingStars().' ';
+        try {
+            $player = $yield->getPlayer();
+            echo $player->getId() . ' ';
+            echo $player->getFirstName() . ' ';
+            echo $player->getLastName() . ' ';
+            echo $player->getSpecialty() . ' ';
+        }catch (exception $ex){}
+        echo '<br>';
+    }
+}
