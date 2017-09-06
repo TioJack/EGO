@@ -1,13 +1,15 @@
 <?php
-set_time_limit(1200); //20 minutes
+set_time_limit(PHP_INT_MAX);
 
 require_once 'config.php';
 require_once 'common.php';
 
+//DB table process id
+$process_id = 1;
+
 try {
     $HT = new \PHT\PHT($config);
 
-    $process_id = 1;
     $con = startDBcon();
 
     //Verify Start or Continue Process

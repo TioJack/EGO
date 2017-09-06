@@ -14,6 +14,8 @@ define("FILENAME_OAUTH_TOKEN", "oauthToken.txt");
 define("FILENAME_OAUTH_TOKEN_SECRET", "oauthTokenSecret.txt");
 define("ERROR_LOGIN", "401 - Unauthorized: Access is denied due to invalid credentials");
 
+define("PARALLEL_THREADS", 40);
+
 require_once 'PHT/autoload.php';
 
 /*

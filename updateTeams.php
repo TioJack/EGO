@@ -4,10 +4,10 @@ set_time_limit(PHP_INT_MAX);
 require_once 'config.php';
 require_once 'common.php';
 
-try {
-    $HT = new \PHT\PHT($config);
+//DB table process id
+$process_id = 2;
 
-    $process_id = 2;
+try {
     $con = startDBcon();
 
     //Verify Start or Continue Process
@@ -16,61 +16,50 @@ try {
         //Start Process
         $exec_id = startProcess($con, $process_id);
         query($con, "UPDATE league SET status=0;");
-        query($con, "UPDATE seniorTeam SET active=0;");
-        query($con, "UPDATE youthTeam SET active=0,status=0;");
+        query($con, "UPDATE seniorteam SET active=0;");
+        query($con, "UPDATE youthteam SET active=0,status=0;");
     } else {
         //Continue Process
         $exec_id = $results->fetch_assoc()['id'];
     }
 
-    //Collect BD seniorTeam_id for insert or update
-    $seniorTeams = array();
-    $results = query($con, "SELECT id FROM seniorTeam");
-    while ($row = $results->fetch_assoc()) {
-        $array[] = $row['id'];
-    }
+    $url_base = 'http://' . $_SERVER['HTTP_HOST'] . '/EGO/updateTeam.php';
 
-    //Collect BD youthTeam_id for insert or update
-    $youthTeams = array();
-    $results = query($con, "SELECT id FROM youthTeam");
-    while ($row = $results->fetch_assoc()) {
-        $array[] = $row['id'];
-    }
-
+    $status = 1;
+    $int = 0;
+    $leagues = array();
     //For each league get seniorTeam and youthTeam
     $results = query($con, "SELECT id FROM league WHERE status=0");
     while ($row = $results->fetch_assoc()) {
-        $league_id = $row['id'];
-        $league = $HT->getSeniorLeague($league_id);
-        foreach ($league->getTeams() as $team) {
-            $seniorTeam = $team->getTeam();
-            $seniorTeam_id = $seniorTeam->getId();
-            if (!$seniorTeam->isBot()) {
-                $seniorTeam_name = addslashes($seniorTeam->getName());
-                $user_id = $seniorTeam->getUserId();
-                if (in_array($seniorTeam_id, $seniorTeams)) {
-                    query($con, "UPDATE seniorTeam SET name='$seniorTeam_name', user_id=$user_id, league_id=$league_id, active=1 WHERE id=$seniorTeam_id;");
-                } else {
-                    query($con, "INSERT INTO seniorTeam(id, name, user_id, league_id, active) VALUES($seniorTeam_id, '$seniorTeam_name', $user_id, $league_id, 1);");
-                }
-                $youthTeam = $seniorTeam->getYouthTeam();
-                if (!$youthTeam == null) {
-                    $youthTeam_id = $youthTeam->getId();
-                    $youthTeam_name = addslashes($youthTeam->getName());
-                    if (in_array($seniorTeam_id, $youthTeams)) {
-                        query($con, "UPDATE youthTeam SET name='$seniorTeam_name', seniorTeam_id=$seniorTeam_id, active=1 WHERE id=$youthTeam_id;");
-                    } else {
-                        query($con, "INSERT INTO youthTeam(id, name, seniorTeam_id, active) VALUES($youthTeam_id, '$youthTeam_name', $seniorTeam_id, 1);");
+        $int++;
+        $leagues[] = $row['id'];
+        if ($int % PARALLEL_THREADS == 0 || $int == $results->num_rows) {
+            $leagues_count = count($leagues);
+            $curl_arr = array();
+            $master = curl_multi_init();
+            for ($i = 0; $i < $leagues_count; $i++) {
+                $url = $url_base . "?exec_id=" . $exec_id . "&league_id=" . $leagues[$i];
+                $curl_arr[$i] = curl_init($url);
+                curl_setopt($curl_arr[$i], CURLOPT_RETURNTRANSFER, true);
+                curl_multi_add_handle($master, $curl_arr[$i]);
+            }
+            do {
+                curl_multi_exec($master, $running);
+            } while ($running > 0);
+            if ($status == 1) {
+                for ($i = 0; $i < $leagues_count; $i++) {
+                    $res = curl_multi_getcontent($curl_arr[$i]);
+                    if ($res != 'OK') {
+                        $status = 0;
+                        break;
                     }
                 }
             }
+            $leagues = array();
         }
-        query($con, "UPDATE league SET status=1 WHERE id=$league_id;");
-        updateProcess($con, $exec_id);
     }
-
-    $results = query($con, "SELECT count(*) AS 'total' FROM youthTeam WHERE active=1")->fetch_assoc()['total'];
-    endProcess($con, $exec_id, 1, $results);
+    $results = query($con, "SELECT count(*) AS 'total' FROM youthteam WHERE active=1")->fetch_assoc()['total'];
+    endProcess($con, $exec_id, $status, $results);
     endDBcon($con);
 } catch (\Exception $e) {
     echo $e->getMessage();

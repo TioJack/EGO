@@ -31,7 +31,7 @@ function query($con, $query)
 
 function startProcess($con, $process_id, $params = null)
 {
-    $params = $params == null ? "'null'" : "'$params'";
+    $params = $params == null ? "NULL" : "'$params'";
     query($con, "INSERT INTO execution(process_id,params,start,status) VALUES ($process_id,$params,CURTIME(),0);");
     return mysqli_insert_id($con);
 }
