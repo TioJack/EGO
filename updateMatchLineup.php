@@ -42,12 +42,12 @@ try {
             $youthPlayer_last_name = addslashes($lineupPlayer->getLastName());
             $youthPlayer_specialty = $player->getSpecialty();
             $youthPlayer_promotedIn = $player->getCanBePromotedIn();
-            $query = "INSERT INTO youthPlayer(id, first_name, last_name, specialty, age, days, date, promotedIn, youthTeam_id) ";
+            $query = "INSERT INTO youthplayer(id, first_name, last_name, specialty, age, days, date, promotedIn, youthTeam_id) ";
             $query .= "VALUES($youthPlayer_id, '$youthPlayer_first_name', '$youthPlayer_last_name', $youthPlayer_specialty, $youthPlayer_age, $youthPlayer_days,CURTIME(), $youthPlayer_promotedIn, $youthTeam_id);";
             query($con, $query);
             $order = $lineupPlayer->getIndividualOrder();
             $order = $order == null ? "NULL" : $order;
-            $query = "INSERT INTO youthMatchLineup(youthMatch_id, youthPlayer_id, position, `order`, stars) VALUES($youthMatch_id, $youthPlayer_id, $position, $order, $stars);";
+            $query = "INSERT INTO youthmatchlineup(youthMatch_id, youthPlayer_id, position, `order`, stars) VALUES($youthMatch_id, $youthPlayer_id, $position, $order, $stars);";
             query($con, $query);
             $saveMatch = true;
         }
@@ -55,10 +55,10 @@ try {
             $youthMatch_type = $match->getType();
             $youthMatch_HomeTeam_Id = $match->getHomeTeamId();
             $youthMatch_AwayTeam_Id = $match->getAwayTeamId();
-            query($con, "INSERT INTO youthMatch(id, date, type, homeTeam_id, awayTeam_id) VALUES($youthMatch_id, '$youthMatch_date', $youthMatch_type, $youthMatch_HomeTeam_Id, $youthMatch_AwayTeam_Id);");
+            query($con, "INSERT INTO youthmatch(id, date, type, homeTeam_id, awayTeam_id) VALUES($youthMatch_id, '$youthMatch_date', $youthMatch_type, $youthMatch_HomeTeam_Id, $youthMatch_AwayTeam_Id);");
         }
     }
-    query($con, "UPDATE youthTeam SET status=1 WHERE id=$youthTeam_id;");
+    query($con, "UPDATE youthteam SET status=1 WHERE id=$youthTeam_id;");
     updateProcess($con, $exec_id);
     echo 'OK';
 } catch (\Exception $e) {
@@ -78,6 +78,10 @@ function isBestPlayer($age, $days, $youthMatch_date, $position, $stars)
     }
 
     $position = role2position($position);
+    if ($position == 7) {
+        return false;
+    }
+
     //matrix minimal stars [age][position]
     $minimal[15][1] = 5.5;
     $minimal[15][2] = 5.5;
@@ -85,14 +89,12 @@ function isBestPlayer($age, $days, $youthMatch_date, $position, $stars)
     $minimal[15][4] = 6.0;
     $minimal[15][5] = 6.5;
     $minimal[15][6] = 7.5;
-    $minimal[15][7] = 5.5;
     $minimal[16][1] = 6.5;
     $minimal[16][2] = 6.5;
     $minimal[16][3] = 6.5;
     $minimal[16][4] = 7.0;
     $minimal[16][5] = 7.0;
     $minimal[16][6] = 8.5;
-    $minimal[16][7] = 6.5;
 
     return $minimal[$age][$position] <= $stars;
 }

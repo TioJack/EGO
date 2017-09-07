@@ -43,5 +43,6 @@ function updateProcess($con, $execution_id)
 
 function endProcess($con, $execution_id, $status, $results)
 {
-    query($con, "UPDATE execution SET end=CURTIME(), status=$status, results=$results WHERE id=$execution_id;");
+    $end = $status == 1 ? "CURTIME()" : "NULL";
+    query($con, "UPDATE execution SET end=$end, status=$status, results=$results WHERE id=$execution_id;");
 }
