@@ -60,7 +60,7 @@ try {
             $youthTeams = array();
         }
     }
-    $results = query($con, "SELECT count(*) AS 'total' FROM youthteam WHERE active=1")->fetch_assoc()['total'];
+    $results = query($con, "SELECT count(*) AS 'total' FROM youthmatchlineup WHERE active=1")->fetch_assoc()['total'];
     endProcess($con, $exec_id, 1, $results);
     endDBcon($con);
 } catch (\Exception $e) {
